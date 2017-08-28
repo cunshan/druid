@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,11 @@ package com.alibaba.druid.sql.dialect.mysql.ast.statement;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.alibaba.druid.sql.ast.SQLCommentHint;
-import com.alibaba.druid.sql.ast.SQLExpr;
-import com.alibaba.druid.sql.ast.SQLName;
-import com.alibaba.druid.sql.ast.SQLObjectImpl;
+import com.alibaba.druid.sql.ast.*;
 import com.alibaba.druid.sql.ast.statement.SQLSelectQueryBlock;
 import com.alibaba.druid.sql.dialect.mysql.ast.MySqlObject;
 import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlASTVisitor;
+import com.alibaba.druid.sql.dialect.oracle.ast.stmt.OracleSelectQueryBlock;
 import com.alibaba.druid.sql.visitor.SQLASTVisitor;
 
 public class MySqlSelectQueryBlock extends SQLSelectQueryBlock implements MySqlObject {
@@ -38,8 +36,6 @@ public class MySqlSelectQueryBlock extends SQLSelectQueryBlock implements MySqlO
     private Boolean              cache;
     private boolean              calcFoundRows;
 
-    private Limit                limit;
-
     private SQLName              procedureName;
     private List<SQLExpr>        procedureArgumentList;
 
@@ -49,6 +45,34 @@ public class MySqlSelectQueryBlock extends SQLSelectQueryBlock implements MySqlO
 
     public MySqlSelectQueryBlock(){
 
+    }
+
+    public MySqlSelectQueryBlock clone() {
+        MySqlSelectQueryBlock x = new MySqlSelectQueryBlock();
+        cloneTo(x);
+
+        x.hignPriority = hignPriority;
+        x.straightJoin = straightJoin;
+
+        x.smallResult = smallResult;
+        x.bigResult = bigResult;
+        x.bufferResult = bufferResult;
+        x.cache = cache;
+        x.calcFoundRows = calcFoundRows;
+
+        if (procedureName != null) {
+            x.setProcedureName(procedureName.clone());
+        }
+        if (procedureArgumentList != null) {
+            for (SQLExpr arg : procedureArgumentList) {
+                SQLExpr arg_cloned = arg.clone();
+                arg_cloned.setParent(this);
+                x.procedureArgumentList.add(arg_cloned);
+            }
+        }
+        x.lockInShareMode = lockInShareMode;
+
+        return x;
     }
 
     public int getHintsSize() {
@@ -91,10 +115,6 @@ public class MySqlSelectQueryBlock extends SQLSelectQueryBlock implements MySqlO
             procedureArgumentList = new ArrayList<SQLExpr>(2);
         }
         return procedureArgumentList;
-    }
-
-    public void setProcedureArgumentList(List<SQLExpr> procedureArgumentList) {
-        this.procedureArgumentList = procedureArgumentList;
     }
 
     public boolean isHignPriority() {
@@ -151,17 +171,6 @@ public class MySqlSelectQueryBlock extends SQLSelectQueryBlock implements MySqlO
 
     public void setCalcFoundRows(boolean calcFoundRows) {
         this.calcFoundRows = calcFoundRows;
-    }
-
-    public Limit getLimit() {
-        return limit;
-    }
-
-    public void setLimit(Limit limit) {
-        if (limit != null) {
-            limit.setParent(this);
-        }
-        this.limit = limit;
     }
 
     @Override
@@ -245,56 +254,6 @@ public class MySqlSelectQueryBlock extends SQLSelectQueryBlock implements MySqlO
         }
 
         visitor.endVisit(this);
-    }
-
-    public static class Limit extends SQLObjectImpl {
-
-        public Limit(){
-
-        }
-        
-        public Limit(SQLExpr rowCount){
-            this.setRowCount(rowCount);
-        }
-
-        private SQLExpr rowCount;
-        private SQLExpr offset;
-
-        public SQLExpr getRowCount() {
-            return rowCount;
-        }
-
-        public void setRowCount(SQLExpr rowCount) {
-            if (rowCount != null) {
-                rowCount.setParent(this);
-            }
-            this.rowCount = rowCount;
-        }
-
-        public SQLExpr getOffset() {
-            return offset;
-        }
-
-        public void setOffset(SQLExpr offset) {
-            if (offset != null) {
-                offset.setParent(this);
-            }
-            this.offset = offset;
-        }
-
-        @Override
-        protected void accept0(SQLASTVisitor visitor) {
-            if (visitor instanceof MySqlASTVisitor) {
-                MySqlASTVisitor mysqlVisitor = (MySqlASTVisitor) visitor;
-
-                if (mysqlVisitor.visit(this)) {
-                    acceptChild(visitor, offset);
-                    acceptChild(visitor, rowCount);
-                }
-                mysqlVisitor.endVisit(this);
-            }
-        }
-
     }
 
 }

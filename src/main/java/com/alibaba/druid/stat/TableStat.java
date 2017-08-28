@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -184,6 +184,8 @@ public class TableStat {
 
         private String name;
 
+        private int hash;
+
         public Name(String name){
             this.name = name;
         }
@@ -193,7 +195,11 @@ public class TableStat {
         }
 
         public int hashCode() {
-            return StringUtils.lowerHashCode(name);
+            int h = hash;
+            if (h == 0 && name != null && name.length() > 0) {
+                hash = h = StringUtils.lowerHashCode(name);
+            }
+            return h;
         }
 
         public boolean equals(Object o) {
@@ -397,13 +403,16 @@ public class TableStat {
 
     public static class Column {
 
-        private String              table;
-        private String              name;
+        private final String              table;
+        private final String              name;
         private boolean             where;
         private boolean             select;
         private boolean             groupBy;
         private boolean             having;
         private boolean             join;
+
+        private boolean             primaryKey; // for ddl
+        private boolean             unique; //
 
         private Map<String, Object> attributes = new HashMap<String, Object>();
 
@@ -414,10 +423,6 @@ public class TableStat {
          */
         private String              dataType;
 
-        public Column(){
-
-        }
-
         public Column(String table, String name){
             this.table = table;
             this.name = name;
@@ -425,11 +430,6 @@ public class TableStat {
 
         public String getTable() {
             return table;
-        }
-
-        public void setTable(String table) {
-            this.table = table;
-            this.fullName = null;
         }
 
         public String getFullName() {
@@ -484,13 +484,24 @@ public class TableStat {
             this.having = having;
         }
 
-        public String getName() {
-            return name;
+        public boolean isPrimaryKey() {
+            return primaryKey;
         }
 
-        public void setName(String name) {
-            this.name = name;
-            this.fullName = null;
+        public void setPrimaryKey(boolean primaryKey) {
+            this.primaryKey = primaryKey;
+        }
+
+        public boolean isUnique() {
+            return unique;
+        }
+
+        public void setUnique(boolean unique) {
+            this.unique = unique;
+        }
+
+        public String getName() {
+            return name;
         }
         
         /**
@@ -572,7 +583,8 @@ public class TableStat {
                              Alter(64), //
                              Drop(128), //
                              DropIndex(256), //
-                             CreateIndex(512)//
+                             CreateIndex(512), //
+                             Replace(1024),
         ; //
 
         public final int mark;

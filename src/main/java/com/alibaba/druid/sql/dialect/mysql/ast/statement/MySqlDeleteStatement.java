@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import com.alibaba.druid.sql.ast.SQLCommentHint;
 import com.alibaba.druid.sql.ast.SQLOrderBy;
 import com.alibaba.druid.sql.ast.statement.SQLDeleteStatement;
 import com.alibaba.druid.sql.ast.statement.SQLTableSource;
-import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectQueryBlock.Limit;
+import com.alibaba.druid.sql.ast.SQLLimit;
 import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlASTVisitor;
 import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlOutputVisitor;
 import com.alibaba.druid.sql.visitor.SQLASTVisitor;
@@ -34,15 +34,35 @@ public class MySqlDeleteStatement extends SQLDeleteStatement {
     private boolean              quick       = false;
     private boolean              ignore      = false;
 
-    private SQLTableSource       from;
     private SQLTableSource       using;
     private SQLOrderBy           orderBy;
-    private Limit                limit;
+    private SQLLimit limit;
 
     private List<SQLCommentHint> hints;
 
     public MySqlDeleteStatement(){
         super(JdbcConstants.MYSQL);
+    }
+
+    public MySqlDeleteStatement clone() {
+        MySqlDeleteStatement x = new MySqlDeleteStatement();
+        cloneTo(x);
+
+        x.lowPriority = lowPriority;
+        x.quick = quick;
+        x.ignore = ignore;
+
+        if (using != null) {
+            x.setUsing(using.clone());
+        }
+        if (orderBy != null) {
+            x.setOrderBy(orderBy.clone());
+        }
+        if (limit != null) {
+            x.setLimit(limit.clone());
+        }
+
+        return x;
     }
 
     public List<SQLCommentHint> getHints() {
@@ -84,20 +104,12 @@ public class MySqlDeleteStatement extends SQLDeleteStatement {
         this.ignore = ignore;
     }
 
-    public SQLTableSource getFrom() {
-        return from;
-    }
-
     public SQLTableSource getUsing() {
         return using;
     }
 
     public void setUsing(SQLTableSource using) {
         this.using = using;
-    }
-
-    public void setFrom(SQLTableSource from) {
-        this.from = from;
     }
 
     public SQLOrderBy getOrderBy() {
@@ -108,11 +120,11 @@ public class MySqlDeleteStatement extends SQLDeleteStatement {
         this.orderBy = orderBy;
     }
 
-    public Limit getLimit() {
+    public SQLLimit getLimit() {
         return limit;
     }
 
-    public void setLimit(Limit limit) {
+    public void setLimit(SQLLimit limit) {
         if (limit != null) {
             limit.setParent(this);
         }

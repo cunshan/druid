@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -76,6 +76,8 @@ public class DB2SelectParser extends SQLSelectParser {
 
         parseWhere(queryBlock);
 
+        parseHierachical(queryBlock);
+
         parseGroupBy(queryBlock);
         
         if (lexer.token() == Token.ORDER) {
@@ -90,7 +92,7 @@ public class DB2SelectParser extends SQLSelectParser {
                 accept(Token.FIRST);
                 SQLExpr first = this.exprParser.primary();
                 queryBlock.setFirst(first);
-                if (identifierEquals("ROW") || identifierEquals("ROWS")) {
+                if (lexer.identifierEquals("ROW") || lexer.identifierEquals("ROWS")) {
                     lexer.nextToken();
                 }
                 accept(Token.ONLY);
@@ -99,16 +101,16 @@ public class DB2SelectParser extends SQLSelectParser {
             
             if (lexer.token() == Token.WITH) {
                 lexer.nextToken();
-                if (identifierEquals("RR")) {
+                if (lexer.identifierEquals("RR")) {
                     queryBlock.setIsolation(Isolation.RR);
-                } else if (identifierEquals("RS")) {
+                } else if (lexer.identifierEquals("RS")) {
                     queryBlock.setIsolation(Isolation.RS);
-                } else if (identifierEquals("CS")) {
+                } else if (lexer.identifierEquals("CS")) {
                     queryBlock.setIsolation(Isolation.CS);
-                } else if (identifierEquals("UR")) {
+                } else if (lexer.identifierEquals("UR")) {
                     queryBlock.setIsolation(Isolation.UR);
                 } else {
-                    throw new ParserException("TODO");
+                    throw new ParserException("TODO. " + lexer.info());
                 }
                 lexer.nextToken();
                 continue;
@@ -132,7 +134,7 @@ public class DB2SelectParser extends SQLSelectParser {
                 accept(Token.FOR);
                 
                 queryBlock.setOptimizeFor(this.expr());
-                if (identifierEquals("ROW")) {
+                if (lexer.identifierEquals("ROW")) {
                     lexer.nextToken();
                 } else {
                     acceptIdentifier("ROWS");

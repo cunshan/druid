@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +38,10 @@ public class SQLSubqueryTableSource extends SQLTableSourceImpl {
         this.setSelect(select);
     }
 
+    public SQLSubqueryTableSource(SQLSelectQuery query){
+        this(new SQLSelect(query));
+    }
+
     public SQLSelect getSelect() {
         return this.select;
     }
@@ -61,5 +65,50 @@ public class SQLSubqueryTableSource extends SQLTableSourceImpl {
         buf.append("(");
         this.select.output(buf);
         buf.append(")");
+    }
+
+    public SQLSubqueryTableSource clone() {
+        SQLSubqueryTableSource x = new SQLSubqueryTableSource();
+
+        x.alias = alias;
+
+        if (select != null) {
+            x.select = select.clone();
+        }
+        return x;
+    }
+
+    public SQLTableSource findTableSourceWithColumn(String columnName) {
+        if (select == null) {
+            return null;
+        }
+
+        SQLSelectQueryBlock queryBlock = select.getFirstQueryBlock();
+        if (queryBlock == null) {
+            return null;
+        }
+
+        if (queryBlock.findSelectItem(columnName) != null) {
+            return this;
+        }
+
+        return null;
+    }
+
+    public SQLTableSource findTableSourceWithColumn(long columnNameHash) {
+        if (select == null) {
+            return null;
+        }
+
+        SQLSelectQueryBlock queryBlock = select.getFirstQueryBlock();
+        if (queryBlock == null) {
+            return null;
+        }
+
+        if (queryBlock.findSelectItem(columnNameHash) != null) {
+            return this;
+        }
+
+        return null;
     }
 }

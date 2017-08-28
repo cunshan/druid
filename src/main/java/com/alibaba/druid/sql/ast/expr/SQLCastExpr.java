@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,10 @@ package com.alibaba.druid.sql.ast.expr;
 import com.alibaba.druid.sql.ast.SQLDataType;
 import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.SQLExprImpl;
+import com.alibaba.druid.sql.ast.SQLObjectWithDataType;
 import com.alibaba.druid.sql.visitor.SQLASTVisitor;
 
-public class SQLCastExpr extends SQLExprImpl {
+public class SQLCastExpr extends SQLExprImpl implements SQLObjectWithDataType {
 
     protected SQLExpr     expr;
     protected SQLDataType dataType;
@@ -45,6 +46,9 @@ public class SQLCastExpr extends SQLExprImpl {
     }
 
     public void setDataType(SQLDataType dataType) {
+        if (dataType != null) {
+            dataType.setParent(this);
+        }
         this.dataType = dataType;
     }
 
@@ -94,4 +98,18 @@ public class SQLCastExpr extends SQLExprImpl {
         return true;
     }
 
+    public SQLDataType computeDataType() {
+        return dataType;
+    }
+
+    public SQLCastExpr clone() {
+        SQLCastExpr x = new SQLCastExpr();
+        if (expr != null) {
+            x.setExpr(expr.clone());
+        }
+        if (dataType != null) {
+            x.setDataType(dataType.clone());
+        }
+        return x;
+    }
 }

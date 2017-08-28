@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -250,6 +250,22 @@ public final class DruidStatManagerFacade {
                 } else if (valueA instanceof List && valueB instanceof List) {
                     List<Map<String, Object>> mergedList = mergeNamedList((List) valueA, (List) valueB);
                     newMap.put(key, mergedList);
+                } else if (valueA instanceof long[] && valueB instanceof long[]) {
+                    long[] arrayA = (long[]) valueA;
+                    long[] arrayB = (long[]) valueB;
+
+                    int len = arrayA.length >= arrayB.length ? arrayA.length : arrayB.length;
+                    long[] sum = new long[len];
+
+                    for (int i = 0; i < sum.length; ++i) {
+                        if (i < arrayA.length) {
+                            sum[i] += arrayA.length;
+                        }
+                        if (i < arrayB.length) {
+                            sum[i] += arrayB.length;
+                        }
+                    }
+                    newMap.put(key, sum);
                 } else if (valueA instanceof String && valueB instanceof String) {
                     newMap.put(key, valueA);
                 } else {

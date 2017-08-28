@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,11 @@ package com.alibaba.druid.sql.ast.statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.alibaba.druid.sql.SQLUtils;
+import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.SQLHint;
 import com.alibaba.druid.sql.ast.SQLObjectImpl;
+import com.alibaba.druid.util.FNVUtils;
 
 public abstract class SQLTableSourceImpl extends SQLObjectImpl implements SQLTableSource {
 
@@ -27,12 +30,15 @@ public abstract class SQLTableSourceImpl extends SQLObjectImpl implements SQLTab
 
     protected List<SQLHint> hints;
 
+    protected SQLExpr       flashback;
+
+    protected long          alias_hash;
+
     public SQLTableSourceImpl(){
 
     }
 
     public SQLTableSourceImpl(String alias){
-
         this.alias = alias;
     }
 
@@ -42,6 +48,7 @@ public abstract class SQLTableSourceImpl extends SQLObjectImpl implements SQLTab
 
     public void setAlias(String alias) {
         this.alias = alias;
+        this.alias_hash = 0L;
     }
 
     public int getHintsSize() {
@@ -61,5 +68,69 @@ public abstract class SQLTableSourceImpl extends SQLObjectImpl implements SQLTab
 
     public void setHints(List<SQLHint> hints) {
         this.hints = hints;
+    }
+
+    public SQLTableSource clone() {
+        throw new UnsupportedOperationException(this.getClass().getName());
+    }
+
+    public String computeAlias() {
+        return alias;
+    }
+
+    public SQLExpr getFlashback() {
+        return flashback;
+    }
+
+    public void setFlashback(SQLExpr flashback) {
+        if (flashback != null) {
+            flashback.setParent(this);
+        }
+        this.flashback = flashback;
+    }
+
+    public boolean containsAlias(String alias) {
+        if (SQLUtils.nameEquals(this.alias, alias)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public long alias_hash() {
+        if (alias_hash == 0
+                && alias != null) {
+            alias_hash = FNVUtils.fnv_64_lower_normalized(alias);
+        }
+        return alias_hash;
+    }
+
+    public SQLColumnDefinition findColumn(String columnName) {
+        return null;
+    }
+
+    public SQLColumnDefinition findColumn(long columnNameHash) {
+        return null;
+    }
+
+    public SQLTableSource findTableSourceWithColumn(String columnName) {
+        return null;
+    }
+
+    public SQLTableSource findTableSourceWithColumn(long columnNameHash) {
+        return null;
+    }
+
+    public SQLTableSource findTableSource(String alias) {
+        long hash = FNVUtils.fnv_64_lower_normalized(alias);
+        return findTableSource(hash);
+    }
+
+    public SQLTableSource findTableSource(long alias_hash) {
+        long hash = this.alias_hash();
+        if (hash != 0 && hash == alias_hash) {
+            return this;
+        }
+        return null;
     }
 }

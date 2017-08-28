@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +19,12 @@ import com.alibaba.druid.sql.ast.statement.SQLSelectQueryBlock;
 import com.alibaba.druid.sql.dialect.db2.ast.stmt.DB2SelectQueryBlock;
 import com.alibaba.druid.sql.dialect.db2.ast.stmt.DB2ValuesStatement;
 import com.alibaba.druid.sql.visitor.SchemaStatVisitor;
+import com.alibaba.druid.util.JdbcConstants;
 import com.alibaba.druid.util.JdbcUtils;
 
 public class DB2SchemaStatVisitor extends SchemaStatVisitor implements DB2ASTVisitor {
-
-    @Override
-    public String getDbType() {
-        return JdbcUtils.DB2;
+    public DB2SchemaStatVisitor() {
+        super (JdbcConstants.DB2);
     }
 
     @Override
@@ -35,7 +34,7 @@ public class DB2SchemaStatVisitor extends SchemaStatVisitor implements DB2ASTVis
 
     @Override
     public void endVisit(DB2SelectQueryBlock x) {
-        
+        super.endVisit((SQLSelectQueryBlock) x);
     }
 
     @Override

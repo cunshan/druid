@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,8 @@ public enum SQLBinaryOperator {
     BitwiseXor("^", 50), 
     
     Multiply("*", 60), 
-    Divide("/", 60), 
+    Divide("/", 60),
+    DIV("DIV", 60), // mysql integer division
     Modulus("%", 60), 
     Mod("MOD", 60),
     
@@ -36,8 +37,11 @@ public enum SQLBinaryOperator {
     SubGt("->", 20), 
     SubGtGt("->>", 20), 
     PoundGt("#>", 20), 
-    PoundGtGt("#>>", 20), 
-    
+    PoundGtGt("#>>", 20),
+    QuesQues("??", 20),
+    QuesBar("?|", 20),
+    QuesAmp("?&", 20),
+
     LeftShift("<<", 80), 
     RightShift(">>", 80), 
 
@@ -53,7 +57,19 @@ public enum SQLBinaryOperator {
     LessThanOrGreater("<>", 110), 
     
     Like("LIKE", 110),
-    NotLike("NOT LIKE", 110), 
+    NotLike("NOT LIKE", 110),
+
+    ILike("ILIKE", 110),
+    NotILike("NOT ILIKE", 110),
+    AT_AT("@@", 110), // postgresql textsearch
+    SIMILAR_TO("SIMILAR TO", 110),
+    POSIX_Regular_Match("~", 110),
+    POSIX_Regular_Match_Insensitive("~*", 110),
+    POSIX_Regular_Not_Match("!~", 110),
+    POSIX_Regular_Not_Match_POSIX_Regular_Match_Insensitive("!~*", 110),
+    Array_Contains("@>", 110),
+    Array_ContainedBy("<@", 110),
+    SAME_AS("~=", 110),
     
     RLike("RLIKE", 110),
     NotRLike("NOT RLIKE", 110),
@@ -73,7 +89,10 @@ public enum SQLBinaryOperator {
     BooleanAnd("AND", 140), 
     BooleanXor("XOR", 150), 
     BooleanOr("OR", 160), 
-    Assignment(":=", 169)    
+    Assignment(":=", 169),
+
+    PG_And("&&", 140),
+    PG_ST_DISTANCE("<->", 20),
     ;
 
     public static int getPriority(SQLBinaryOperator operator) {
@@ -119,6 +138,8 @@ public enum SQLBinaryOperator {
             case NotRLike:
             case RegExp:
             case NotRegExp:
+            case Is:
+            case IsNot:
                 return true;
             default:
                 return false;

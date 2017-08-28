@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,15 +20,18 @@ import java.util.List;
 
 import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.SQLName;
+import com.alibaba.druid.sql.ast.SQLReplaceable;
 import com.alibaba.druid.sql.ast.SQLStatementImpl;
 import com.alibaba.druid.sql.visitor.SQLASTVisitor;
 
-public class SQLUpdateStatement extends SQLStatementImpl {
+public class SQLUpdateStatement extends SQLStatementImpl implements SQLReplaceable {
 
     protected final List<SQLUpdateSetItem> items = new ArrayList<SQLUpdateSetItem>();
     protected SQLExpr                      where;
+    protected SQLTableSource               from;
 
     protected SQLTableSource               tableSource;
+    protected List<SQLExpr>                returning;
 
     public SQLUpdateStatement(){
 
@@ -55,8 +58,14 @@ public class SQLUpdateStatement extends SQLStatementImpl {
 
     public SQLName getTableName() {
         if (tableSource instanceof SQLExprTableSource) {
-            SQLExprTableSource exprTableSource = (SQLExprTableSource) tableSource;
-            return (SQLName) exprTableSource.getExpr();
+            return ((SQLExprTableSource) tableSource).getName();
+        }
+
+        if (tableSource instanceof SQLJoinTableSource) {
+            SQLTableSource left = ((SQLJoinTableSource) tableSource).getLeft();
+            if (left instanceof SQLExprTableSource) {
+                return ((SQLExprTableSource) left).getName();
+            }
         }
         return null;
     }
@@ -79,6 +88,25 @@ public class SQLUpdateStatement extends SQLStatementImpl {
     public void addItem(SQLUpdateSetItem item) {
         this.items.add(item);
         item.setParent(this);
+    }
+
+    public List<SQLExpr> getReturning() {
+        if (returning == null) {
+            returning = new ArrayList<SQLExpr>(2);
+        }
+
+        return returning;
+    }
+
+    public SQLTableSource getFrom() {
+        return from;
+    }
+
+    public void setFrom(SQLTableSource from) {
+        if (from != null) {
+            from.setParent(this);
+        }
+        this.from = from;
     }
 
     @Override
@@ -105,9 +133,19 @@ public class SQLUpdateStatement extends SQLStatementImpl {
     protected void accept0(SQLASTVisitor visitor) {
         if (visitor.visit(this)) {
             acceptChild(visitor, tableSource);
+            acceptChild(visitor, from);
             acceptChild(visitor, items);
             acceptChild(visitor, where);
         }
         visitor.endVisit(this);
+    }
+
+    @Override
+    public boolean replace(SQLExpr expr, SQLExpr target) {
+        if (where == expr) {
+            setWhere(target);
+            return true;
+        }
+        return false;
     }
 }

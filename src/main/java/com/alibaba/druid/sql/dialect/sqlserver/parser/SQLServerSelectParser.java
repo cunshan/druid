@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,7 @@ package com.alibaba.druid.sql.dialect.sqlserver.parser;
 
 import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.SQLSetQuantifier;
-import com.alibaba.druid.sql.ast.statement.SQLExprHint;
-import com.alibaba.druid.sql.ast.statement.SQLExprTableSource;
-import com.alibaba.druid.sql.ast.statement.SQLSelect;
-import com.alibaba.druid.sql.ast.statement.SQLSelectQuery;
-import com.alibaba.druid.sql.ast.statement.SQLTableSource;
-import com.alibaba.druid.sql.dialect.sqlserver.ast.SQLServerSelect;
+import com.alibaba.druid.sql.ast.statement.*;
 import com.alibaba.druid.sql.dialect.sqlserver.ast.SQLServerSelectQueryBlock;
 import com.alibaba.druid.sql.dialect.sqlserver.ast.SQLServerTop;
 import com.alibaba.druid.sql.parser.ParserException;
@@ -41,9 +36,12 @@ public class SQLServerSelectParser extends SQLSelectParser {
     }
 
     public SQLSelect select() {
-        SQLServerSelect select = new SQLServerSelect();
+        SQLSelect select = new SQLSelect();
 
-        withSubquery(select);
+        if (lexer.token() == Token.WITH) {
+            SQLWithSubqueryClause with = this.parseWith();
+            select.setWithSubQuery(with);
+        }
 
         select.setQuery(query());
         select.setOrderBy(parseOrderBy());
@@ -55,28 +53,28 @@ public class SQLServerSelectParser extends SQLSelectParser {
         if (lexer.token() == Token.FOR) {
             lexer.nextToken();
 
-            if (identifierEquals("BROWSE")) {
+            if (lexer.identifierEquals("BROWSE")) {
                 lexer.nextToken();
                 select.setForBrowse(true);
-            } else if (identifierEquals("XML")) {
+            } else if (lexer.identifierEquals("XML")) {
                 lexer.nextToken();
 
                 for (;;) {
-                    if (identifierEquals("AUTO") //
-                        || identifierEquals("TYPE") //
-                        || identifierEquals("XMLSCHEMA") //
+                    if (lexer.identifierEquals("AUTO") //
+                        || lexer.identifierEquals("TYPE") //
+                        || lexer.identifierEquals("XMLSCHEMA") //
                     ) {
                         select.getForXmlOptions().add(lexer.stringVal());
                         lexer.nextToken();
-                    } else if (identifierEquals("ELEMENTS")) {
+                    } else if (lexer.identifierEquals("ELEMENTS")) {
                         lexer.nextToken();
-                        if (identifierEquals("XSINIL")) {
+                        if (lexer.identifierEquals("XSINIL")) {
                             lexer.nextToken();
                             select.getForXmlOptions().add("ELEMENTS XSINIL");
                         } else {
                             select.getForXmlOptions().add("ELEMENTS");
                         }
-                    } else if (identifierEquals("PATH")) {
+                    } else if (lexer.identifierEquals("PATH")) {
                         SQLExpr xmlPath = this.exprParser.expr();
                         select.setXmlPath(xmlPath);
                     } else {
@@ -91,11 +89,11 @@ public class SQLServerSelectParser extends SQLSelectParser {
                     }
                 }
             } else {
-                throw new ParserException("syntax error, not support option : " + lexer.token());
+                throw new ParserException("syntax error, not support option : " + lexer.token() + ", " + lexer.info());
             }
         }
         
-        if (identifierEquals("OFFSET")) {
+        if (lexer.identifierEquals("OFFSET")) {
             lexer.nextToken();
             SQLExpr offset = this.expr();
             
@@ -163,6 +161,10 @@ public class SQLServerSelectParser extends SQLSelectParser {
         parseWhere(queryBlock);
 
         parseGroupBy(queryBlock);
+
+        queryBlock.setOrderBy(this.exprParser.parseOrderBy());
+
+        parseFetchClause(queryBlock);
 
         return queryRest(queryBlock);
     }

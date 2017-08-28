@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,18 @@
 package com.alibaba.druid.sql.ast.statement;
 
 import com.alibaba.druid.sql.ast.SQLExpr;
+import com.alibaba.druid.sql.ast.SQLName;
 import com.alibaba.druid.sql.ast.SQLStatement;
 import com.alibaba.druid.sql.ast.SQLStatementImpl;
 import com.alibaba.druid.sql.visitor.SQLASTVisitor;
 
-public class SQLCommentStatement extends SQLStatementImpl implements SQLStatement {
+public class SQLCommentStatement extends SQLStatementImpl {
 
     public static enum Type {
         TABLE, COLUMN
     }
 
-    private SQLExpr on;
+    private SQLName on;
     private Type    type;
     private SQLExpr comment;
 
@@ -46,11 +47,11 @@ public class SQLCommentStatement extends SQLStatementImpl implements SQLStatemen
         this.type = type;
     }
 
-    public SQLExpr getOn() {
+    public SQLName getOn() {
         return on;
     }
 
-    public void setOn(SQLExpr on) {
+    public void setOn(SQLName on) {
         this.on = on;
     }
 

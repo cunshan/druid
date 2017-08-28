@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,20 +25,10 @@ import com.alibaba.druid.sql.ast.SQLDeclareItem;
 import com.alibaba.druid.sql.ast.SQLStatement;
 import com.alibaba.druid.sql.ast.expr.SQLIdentifierExpr;
 import com.alibaba.druid.sql.ast.expr.SQLQueryExpr;
-import com.alibaba.druid.sql.ast.statement.SQLBlockStatement;
-import com.alibaba.druid.sql.ast.statement.SQLColumnDefinition;
-import com.alibaba.druid.sql.ast.statement.SQLConstraint;
-import com.alibaba.druid.sql.ast.statement.SQLIfStatement;
-import com.alibaba.druid.sql.ast.statement.SQLInsertInto;
-import com.alibaba.druid.sql.ast.statement.SQLInsertStatement;
-import com.alibaba.druid.sql.ast.statement.SQLSetStatement;
-import com.alibaba.druid.sql.ast.statement.SQLTableElement;
-import com.alibaba.druid.sql.ast.statement.SQLTableSource;
-import com.alibaba.druid.sql.ast.statement.SQLUpdateStatement;
+import com.alibaba.druid.sql.ast.statement.*;
 import com.alibaba.druid.sql.dialect.sqlserver.ast.SQLServerOutput;
 import com.alibaba.druid.sql.dialect.sqlserver.ast.SQLServerTop;
-import com.alibaba.druid.sql.dialect.sqlserver.ast.stmt.SQLServerCommitStatement;
-import com.alibaba.druid.sql.dialect.sqlserver.ast.stmt.SQLServerDeclareStatement;
+import com.alibaba.druid.sql.ast.statement.SQLDeclareStatement;
 import com.alibaba.druid.sql.dialect.sqlserver.ast.stmt.SQLServerExecStatement;
 import com.alibaba.druid.sql.dialect.sqlserver.ast.stmt.SQLServerExecStatement.SQLServerParameter;
 import com.alibaba.druid.sql.dialect.sqlserver.ast.stmt.SQLServerInsertStatement;
@@ -47,16 +37,16 @@ import com.alibaba.druid.sql.dialect.sqlserver.ast.stmt.SQLServerSetStatement;
 import com.alibaba.druid.sql.dialect.sqlserver.ast.stmt.SQLServerSetTransactionIsolationLevelStatement;
 import com.alibaba.druid.sql.dialect.sqlserver.ast.stmt.SQLServerUpdateStatement;
 import com.alibaba.druid.sql.dialect.sqlserver.ast.stmt.SQLServerWaitForStatement;
-import com.alibaba.druid.sql.parser.Lexer;
-import com.alibaba.druid.sql.parser.ParserException;
-import com.alibaba.druid.sql.parser.SQLSelectParser;
-import com.alibaba.druid.sql.parser.SQLStatementParser;
-import com.alibaba.druid.sql.parser.Token;
+import com.alibaba.druid.sql.parser.*;
 
 public class SQLServerStatementParser extends SQLStatementParser {
 
     public SQLServerStatementParser(String sql){
         super(new SQLServerExprParser(sql));
+    }
+
+    public SQLServerStatementParser(String sql, SQLParserFeature... features){
+        super(new SQLServerExprParser(sql, features));
     }
 
     public SQLSelectParser createSQLSelectParser() {
@@ -74,7 +64,7 @@ public class SQLServerStatementParser extends SQLStatementParser {
             return true;
         }
 
-        if (identifierEquals("EXEC") || identifierEquals("EXECUTE")) {
+        if (lexer.identifierEquals("EXEC") || lexer.identifierEquals("EXECUTE")) {
             lexer.nextToken();
 
             SQLServerExecStatement execStmt = new SQLServerExecStatement();
@@ -119,7 +109,7 @@ public class SQLServerStatementParser extends SQLStatementParser {
             return true;
         }
 
-        if (identifierEquals("WAITFOR")) {
+        if (lexer.identifierEquals("WAITFOR")) {
             statementList.add(this.parseWaitFor());
             return true;
         }
@@ -164,7 +154,7 @@ public class SQLServerStatementParser extends SQLStatementParser {
     public SQLStatement parseDeclare() {
         this.accept(Token.DECLARE);
 
-        SQLServerDeclareStatement declareStatement = new SQLServerDeclareStatement();
+        SQLDeclareStatement declareStatement = new SQLDeclareStatement();
         
         for (;;) {
             SQLDeclareItem item = new  SQLDeclareItem();
@@ -196,7 +186,7 @@ public class SQLServerStatementParser extends SQLStatementParser {
                             constraint.setParent(item);
                             item.getTableElementList().add((SQLTableElement) constraint);
                         } else if (lexer.token() == Token.TABLESPACE) {
-                            throw new ParserException("TODO " + lexer.token());
+                            throw new ParserException("TODO " + lexer.info());
                         } else {
                             SQLColumnDefinition column = this.exprParser.parseColumn();
                             item.getTableElementList().add(column);
@@ -265,7 +255,7 @@ public class SQLServerStatementParser extends SQLStatementParser {
         insertStatement.setTableName(tableName);
 
         if (lexer.token() == Token.LITERAL_ALIAS) {
-            insertStatement.setAlias(as());
+            insertStatement.setAlias(tableAlias());
         }
 
         parseInsert0_hinits(insertStatement);
@@ -293,7 +283,7 @@ public class SQLServerStatementParser extends SQLStatementParser {
                 accept(Token.LPAREN);
                 SQLInsertStatement.ValuesClause values = new SQLInsertStatement.ValuesClause();
                 this.exprParser.exprList(values.getValues(), values);
-                insertStatement.getValuesList().add(values);
+                insertStatement.addValueCause(values);
                 accept(Token.RPAREN);
 
                 if (!parseCompleteValues && insertStatement.getValuesList().size() >= parseValuesSize) {
@@ -363,60 +353,60 @@ public class SQLServerStatementParser extends SQLStatementParser {
     public SQLStatement parseSet() {
         accept(Token.SET);
 
-        if (identifierEquals("TRANSACTION")) {
+        if (lexer.identifierEquals("TRANSACTION")) {
             lexer.nextToken();
             acceptIdentifier("ISOLATION");
             acceptIdentifier("LEVEL");
 
             SQLServerSetTransactionIsolationLevelStatement stmt = new SQLServerSetTransactionIsolationLevelStatement();
 
-            if (identifierEquals("READ")) {
+            if (lexer.identifierEquals("READ")) {
                 lexer.nextToken();
 
-                if (identifierEquals("UNCOMMITTED")) {
+                if (lexer.identifierEquals("UNCOMMITTED")) {
                     stmt.setLevel("READ UNCOMMITTED");
                     lexer.nextToken();
-                } else if (identifierEquals("COMMITTED")) {
+                } else if (lexer.identifierEquals("COMMITTED")) {
                     stmt.setLevel("READ COMMITTED");
                     lexer.nextToken();
                 } else {
-                    throw new ParserException("UNKOWN TRANSACTION LEVEL : " + lexer.stringVal());
+                    throw new ParserException("UNKOWN TRANSACTION LEVEL : " + lexer.stringVal() + ", " + lexer.info());
                 }
-            } else if (identifierEquals("SERIALIZABLE")) {
+            } else if (lexer.identifierEquals("SERIALIZABLE")) {
                 stmt.setLevel("SERIALIZABLE");
                 lexer.nextToken();
-            } else if (identifierEquals("SNAPSHOT")) {
+            } else if (lexer.identifierEquals("SNAPSHOT")) {
                 stmt.setLevel("SNAPSHOT");
                 lexer.nextToken();
-            } else if (identifierEquals("REPEATABLE")) {
+            } else if (lexer.identifierEquals("REPEATABLE")) {
                 lexer.nextToken();
-                if (identifierEquals("READ")) {
+                if (lexer.identifierEquals("READ")) {
                     stmt.setLevel("REPEATABLE READ");
                     lexer.nextToken();
                 } else {
-                    throw new ParserException("UNKOWN TRANSACTION LEVEL : " + lexer.stringVal());
+                    throw new ParserException("UNKOWN TRANSACTION LEVEL : " + lexer.stringVal() + ", " + lexer.info());
                 }
             } else {
-                throw new ParserException("UNKOWN TRANSACTION LEVEL : " + lexer.stringVal());
+                throw new ParserException("UNKOWN TRANSACTION LEVEL : " + lexer.stringVal() + ", " + lexer.info());
             }
 
             return stmt;
         }
 
-        if (identifierEquals("STATISTICS")) {
+        if (lexer.identifierEquals("STATISTICS")) {
             lexer.nextToken();
 
             SQLServerSetStatement stmt = new SQLServerSetStatement();
 
-            if (identifierEquals("IO") || identifierEquals("XML") || identifierEquals("PROFILE")
-                || identifierEquals("TIME")) {
+            if (lexer.identifierEquals("IO") || lexer.identifierEquals("XML") || lexer.identifierEquals("PROFILE")
+                || lexer.identifierEquals("TIME")) {
                 stmt.getItem().setTarget(new SQLIdentifierExpr("STATISTICS " + lexer.stringVal().toUpperCase()));
 
                 lexer.nextToken();
                 if (lexer.token() == Token.ON) {
                     stmt.getItem().setValue(new SQLIdentifierExpr("ON"));
                     lexer.nextToken();
-                } else if (identifierEquals("OFF")) {
+                } else if (lexer.identifierEquals("OFF")) {
                     stmt.getItem().setValue(new SQLIdentifierExpr("OFF"));
                     lexer.nextToken();
                 }
@@ -435,7 +425,7 @@ public class SQLServerStatementParser extends SQLStatementParser {
             if (lexer.token() == Token.ON) {
                 stmt.getItem().setValue(new SQLIdentifierExpr("ON"));
                 lexer.nextToken();
-            } else if (identifierEquals("OFF")) {
+            } else if (lexer.identifierEquals("OFF")) {
                 stmt.getItem().setValue(new SQLIdentifierExpr("OFF"));
                 lexer.nextToken();
             } else {
@@ -469,11 +459,22 @@ public class SQLServerStatementParser extends SQLStatementParser {
         return stmt;
     }
 
-    public SQLBlockStatement parseBlock() {
-        SQLBlockStatement block = new SQLBlockStatement();
-
+    public SQLStatement parseBlock() {
         accept(Token.BEGIN);
 
+        if (lexer.identifierEquals("TRANSACTION") || lexer.identifierEquals("TRAN")) {
+            lexer.nextToken();
+
+            SQLStartTransactionStatement startTrans = new SQLStartTransactionStatement();
+
+            if (lexer.token() == Token.IDENTIFIER) {
+                SQLName name = this.exprParser.name();
+                startTrans.setName(name);
+            }
+            return startTrans;
+        }
+
+        SQLBlockStatement block = new SQLBlockStatement();
         parseStatementList(block.getStatementList());
 
         accept(Token.END);
@@ -481,17 +482,17 @@ public class SQLServerStatementParser extends SQLStatementParser {
         return block;
     }
     
-    public SQLServerCommitStatement parseCommit() {
+    public SQLStatement parseCommit() {
         acceptIdentifier("COMMIT");
 
-        SQLServerCommitStatement stmt = new SQLServerCommitStatement();
+        SQLCommitStatement stmt = new SQLCommitStatement();
 
-        if (identifierEquals("WORK")) {
+        if (lexer.identifierEquals("WORK")) {
             lexer.nextToken();
             stmt.setWork(true);
         }
 
-        if (identifierEquals("TRAN") || identifierEquals("TRANSACTION")) {
+        if (lexer.identifierEquals("TRAN") || lexer.identifierEquals("TRANSACTION")) {
             lexer.nextToken();
             if (lexer.token() == Token.IDENTIFIER || lexer.token() == Token.VARIANT) {
                 stmt.setTransactionName(this.exprParser.expr());
@@ -516,12 +517,12 @@ public class SQLServerStatementParser extends SQLStatementParser {
 
         SQLServerRollbackStatement stmt = new SQLServerRollbackStatement();
 
-        if (identifierEquals("WORK")) {
+        if (lexer.identifierEquals("WORK")) {
             lexer.nextToken();
             stmt.setWork(true);
         }
 
-        if (identifierEquals("TRAN") || identifierEquals("TRANSACTION")) {
+        if (lexer.identifierEquals("TRAN") || lexer.identifierEquals("TRANSACTION")) {
             lexer.nextToken();
             if (lexer.token() == Token.IDENTIFIER || lexer.token() == Token.VARIANT) {
                 stmt.setName(this.exprParser.expr());
@@ -538,19 +539,19 @@ public class SQLServerStatementParser extends SQLStatementParser {
 
         SQLServerWaitForStatement stmt = new SQLServerWaitForStatement();
 
-        if (identifierEquals("DELAY")) {
+        if (lexer.identifierEquals("DELAY")) {
             lexer.nextToken();
             stmt.setDelay(this.exprParser.expr());
         }
 
-        if (identifierEquals("TIME")) {
+        if (lexer.identifierEquals("TIME")) {
             lexer.nextToken();
             stmt.setTime(this.exprParser.expr());
         }
 
         if (lexer.token() == Token.COMMA) {
             lexer.nextToken();
-            if (identifierEquals("TIMEOUT")) {
+            if (lexer.identifierEquals("TIMEOUT")) {
                 lexer.nextToken();
                 stmt.setTimeout(this.exprParser.expr());
             }

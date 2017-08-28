@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +26,25 @@ import com.alibaba.druid.sql.visitor.SQLASTVisitor;
 public class SQLInsertStatement extends SQLInsertInto implements SQLStatement {
     private String dbType;
 
+    protected boolean upsert = false; // for phoenix
+
+    private boolean afterSemi;
+
     public SQLInsertStatement(){
 
+    }
+
+    public void cloneTo(SQLInsertStatement x) {
+        super.cloneTo(x);
+        x.dbType = dbType;
+        x.upsert = upsert;
+        x.afterSemi = afterSemi;
+    }
+
+    public SQLInsertStatement clone() {
+        SQLInsertStatement x = new SQLInsertStatement();
+        cloneTo(x);
+        return x;
     }
 
     @Override
@@ -42,12 +59,30 @@ public class SQLInsertStatement extends SQLInsertInto implements SQLStatement {
         visitor.endVisit(this);
     }
 
+    public boolean isUpsert() {
+        return upsert;
+    }
+
+    public void setUpsert(boolean upsert) {
+        this.upsert = upsert;
+    }
+
     public static class ValuesClause extends SQLObjectImpl {
 
         private final List<SQLExpr> values;
 
+        private transient String originalString;
+
         public ValuesClause(){
             this(new ArrayList<SQLExpr>());
+        }
+
+        public ValuesClause clone() {
+            ValuesClause x = new ValuesClause(new ArrayList<SQLExpr>(this.values.size()));
+            for (SQLExpr v : values) {
+                x.addValue(v);
+            }
+            return x;
         }
 
         public ValuesClause(List<SQLExpr> values){
@@ -85,6 +120,14 @@ public class SQLInsertStatement extends SQLInsertInto implements SQLStatement {
 
             visitor.endVisit(this);
         }
+
+        public String getOriginalString() {
+            return originalString;
+        }
+
+        public void setOriginalString(String originalString) {
+            this.originalString = originalString;
+        }
     }
 
     @Override
@@ -94,5 +137,15 @@ public class SQLInsertStatement extends SQLInsertInto implements SQLStatement {
     
     public void setDbType(String dbType) {
         this.dbType = dbType;
+    }
+
+    @Override
+    public boolean isAfterSemi() {
+        return afterSemi;
+    }
+
+    @Override
+    public void setAfterSemi(boolean afterSemi) {
+        this.afterSemi = afterSemi;
     }
 }

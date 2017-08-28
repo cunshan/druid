@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,9 @@ import java.util.Map;
 
 import com.alibaba.druid.sql.parser.Keywords;
 import com.alibaba.druid.sql.parser.Lexer;
+import com.alibaba.druid.sql.parser.SQLParserFeature;
 import com.alibaba.druid.sql.parser.Token;
+import com.alibaba.druid.util.JdbcConstants;
 
 public class PGLexer extends Lexer {
 
@@ -33,6 +35,7 @@ public class PGLexer extends Lexer {
 
         map.putAll(Keywords.DEFAULT_KEYWORDS.getKeywords());
 
+        map.put("BEGIN", Token.BEGIN);
         map.put("CASCADE", Token.CASCADE);
         map.put("CONTINUE", Token.CONTINUE);
         map.put("CURRENT", Token.CURRENT);
@@ -56,7 +59,8 @@ public class PGLexer extends Lexer {
         map.put("ROWS", Token.ROWS);
         map.put("SHARE", Token.SHARE);
         map.put("SHOW", Token.SHOW);
-
+        map.put("START", Token.START);
+        
         map.put("USING", Token.USING);
         map.put("WINDOW", Token.WINDOW);
         
@@ -65,13 +69,18 @@ public class PGLexer extends Lexer {
         map.put("ARRAY", Token.ARRAY);
         map.put("IF", Token.IF);
         map.put("TYPE", Token.TYPE);
+        map.put("ILIKE", Token.ILIKE);
 
         DEFAULT_PG_KEYWORDS = new Keywords(map);
     }
 
-    public PGLexer(String input){
+    public PGLexer(String input, SQLParserFeature... features){
         super(input);
         super.keywods = DEFAULT_PG_KEYWORDS;
+        super.dbType = JdbcConstants.POSTGRESQL;
+        for (SQLParserFeature feature : features) {
+            config(feature, true);
+        }
     }
     
     protected void scanString() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2101 Alibaba Group Holding Ltd.
+ * Copyright 1999-2017 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,16 +20,32 @@ import java.util.List;
 
 import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.statement.SQLInsertStatement;
-import com.alibaba.druid.sql.dialect.postgresql.ast.PGWithClause;
+import com.alibaba.druid.sql.ast.statement.SQLWithSubqueryClause;
 import com.alibaba.druid.sql.dialect.postgresql.visitor.PGASTVisitor;
 import com.alibaba.druid.sql.visitor.SQLASTVisitor;
 
 public class PGInsertStatement extends SQLInsertStatement implements PGSQLStatement {
 
-    private PGWithClause       with;
+    private SQLWithSubqueryClause with;
     private List<ValuesClause> valuesList = new ArrayList<ValuesClause>();
     private SQLExpr            returning;
     private boolean			   defaultValues = false;
+
+    public void cloneTo(PGInsertStatement x) {
+        super.cloneTo(x);
+        if (with != null) {
+            x.setWith(with.clone());
+        }
+        for (ValuesClause v : valuesList) {
+            ValuesClause v2 = v.clone();
+            v2.setParent(x);
+            x.valuesList.add(v2);
+        }
+        if (returning != null) {
+            x.setReturning(returning.clone());
+        }
+        x.defaultValues = defaultValues;
+    }
 
     public SQLExpr getReturning() {
         return returning;
@@ -39,11 +55,11 @@ public class PGInsertStatement extends SQLInsertStatement implements PGSQLStatem
         this.returning = returning;
     }
 
-    public PGWithClause getWith() {
+    public SQLWithSubqueryClause getWith() {
         return with;
     }
 
-    public void setWith(PGWithClause with) {
+    public void setWith(SQLWithSubqueryClause with) {
         this.with = with;
     }
 
@@ -95,5 +111,11 @@ public class PGInsertStatement extends SQLInsertStatement implements PGSQLStatem
         }
 
         visitor.endVisit(this);
+    }
+
+    public PGInsertStatement clone() {
+        PGInsertStatement x = new PGInsertStatement();
+        cloneTo(x);
+        return x;
     }
 }
